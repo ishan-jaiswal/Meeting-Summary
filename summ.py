@@ -1,16 +1,14 @@
-#!/usr/bin/env python
-# coding: utf-8
-
+from flask import Flask, request
+from flask_cors import CORS, cross_origin
 from nltk.corpus import stopwords
 from nltk.cluster.util import cosine_distance
 import numpy as np
 import networkx as nx
- 
-def read_article(file_name):
-    file = open(file_name, "r")
-    filedata = file.readlines()
-    print(filedata)
-    article = filedata[0].split(". ")
+app = Flask(__name__)
+CORS(app, support_credentials=True)
+
+def read_article(file_data):    
+    article = file_data.split(". ")
     sentences = []
 
     for sentence in article:
@@ -58,13 +56,12 @@ def build_similarity_matrix(sentences, stop_words):
 
     return similarity_matrix
 
-
-def generate_summary(file_name, top_n=5):
+def generate_summary(file_data, top_n=5):
     stop_words = stopwords.words('english')
     summarize_text = []
 
     # Step 1 - Read text anc split it
-    sentences =  read_article(file_name)
+    sentences =  read_article(file_data)
 
     # Step 2 - Generate Similary Martix across sentences
     sentence_similarity_martix = build_similarity_matrix(sentences, stop_words)
@@ -80,8 +77,17 @@ def generate_summary(file_name, top_n=5):
     for i in range(top_n):
       summarize_text.append(" ".join(ranked_sentence[i][1]))
 
-    # Step 5 - Offcourse, output the summarize texr
-    print("Summarize Text: \n->", "\n->".join(summarize_text))
+    # Step 5 - Offcourse, output the summarize text
+    return ("@".join(summarize_text))
 
-# let's begin
-generate_summary( "input.txt", 2)
+@app.route('/summary', methods=['POST'])
+def predict():    
+    data=request.json['data']
+    pt=request.json['points']
+    result=generate_summary(data,int(pt))
+    return{
+        "message":True,
+        "result":result.split('@')
+    }
+if __name__ == '__main__':
+    app.run(threaded=True)
